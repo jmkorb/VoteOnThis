@@ -26,9 +26,10 @@ function generateSessionId() {
 
 // Create session
 app.post('/api/sessions', (req, res) => {
-  const { question, options } = req.body;
+  const { question, options, dates } = req.body;
   
-  if (!question || !options || options.length < 3) {
+  if (!question || !options || options.length < 2) {
+    console.log(req.body);
     return res.status(400).json({ error: 'Invalid session data' });
   }
 
@@ -37,6 +38,7 @@ app.post('/api/sessions', (req, res) => {
     id: sessionId,
     question,
     options,
+    dates: dates || null,
     votes: {},
     createdAt: Date.now()
   };
@@ -60,7 +62,7 @@ app.get('/api/sessions/:sessionId', (req, res) => {
 // Submit vote
 app.post('/api/sessions/:sessionId/vote', (req, res) => {
   const { sessionId } = req.params;
-  const { voterName, choices, voterId } = req.body;
+  const { voterName, choices, dates, voterId } = req.body;
 
   const session = sessions.get(sessionId);
   if (!session) {
@@ -76,9 +78,15 @@ app.post('/api/sessions/:sessionId/vote', (req, res) => {
     return res.status(400).json({ error: 'Already voted' });
   }
 
+  // Validate dates if session requires them
+  if (session.dates && (!dates || dates.length === 0)) {
+    return res.status(400).json({ error: 'Must select at least one date' });
+  }
+
   session.votes[voterId] = {
     name: voterName,
     choices,
+    dates: dates || null,
     timestamp: Date.now()
   };
 
