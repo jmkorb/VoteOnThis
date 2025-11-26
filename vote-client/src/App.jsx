@@ -9,7 +9,7 @@ const socket = io(API_URL);
 export default function VotingApp() {
   const [mode, setMode] = useState('landing');
   const [sessionId, setSessionId] = useState('');
-  const [options, setOptions] = useState(['', '', '', '']);
+  const [options, setOptions] = useState(['', '']);
   const [question, setQuestion] = useState('');
   const [selectedVotes, setSelectedVotes] = useState([]);
   const [sessionData, setSessionData] = useState(null);
@@ -192,8 +192,8 @@ export default function VotingApp() {
   };
 
   const submitVote = async () => {
-    if (selectedVotes.length !== 3) {
-      setError('Please select exactly 3 options');
+    if (selectedVotes.length < 2) {
+      setError('Please select at least 2 options');
       return;
     }
     if (!voterName.trim()) {
@@ -235,7 +235,7 @@ export default function VotingApp() {
   const toggleVote = (option) => {
     if (selectedVotes.includes(option)) {
       setSelectedVotes(selectedVotes.filter(v => v !== option));
-    } else if (selectedVotes.length < 3) {
+    } else if (selectedVotes.length < 2) {
       setSelectedVotes([...selectedVotes, option]);
     }
   };
@@ -297,8 +297,8 @@ export default function VotingApp() {
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <div className="text-center mb-8">
             <Users className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Multi-Vote</h1>
-            <p className="text-gray-600">Create voting sessions where everyone picks their top 3 choices</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">What/Where/When</h1>
+            <p className="text-gray-600">Jacob's super easy app to help you and your friend's make a decision</p>
           </div>
 
           {error && (
@@ -363,7 +363,7 @@ export default function VotingApp() {
                     onClick={() => removeOption(idx)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-700 transition"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-5 h-5 text-black hover:text-red-500 transition" />
                   </button>
                 )}
               </div>
@@ -512,7 +512,7 @@ export default function VotingApp() {
             </div>
             <div className="bg-gray-50 p-3 rounded-lg mt-3">
               <p className="text-center text-gray-700">
-                Selected: <span className="font-bold text-indigo-600">{selectedVotes.length}</span> / 3
+                Selected: <span className="font-bold text-indigo-600">{selectedVotes.length}</span> / 2
               </p>
             </div>
           </div>
@@ -550,7 +550,7 @@ export default function VotingApp() {
           <button
             onClick={submitVote}
             disabled={
-              selectedVotes.length !== 3 || 
+              selectedVotes.length !== 2 || 
               !voterName.trim() || 
               (sessionData.dates && voterSelectedDates.length === 0)
             }
