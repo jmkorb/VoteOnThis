@@ -56,6 +56,26 @@ input {
   font-family: inherit;
 }
 
+h2 {
+  text-align: center;
+}
+
+.app-background{
+  background-color: #63788a;
+}
+
+.text-primary{
+  color: #6596be;
+}
+
+.bg-primary{
+  background-color: #6596be;
+}
+
+.bg-primary:hover{
+  background-color: #4b6f8d;
+}
+
 .rc-input-number-handler-wrap {
   border-left: none !important;
 }
@@ -78,7 +98,7 @@ input {
 }
 
 .rc-input-number:focus-within {
-  border-color: #6366f1 !important;
+  border-color: #6596be !important;
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
 }
 

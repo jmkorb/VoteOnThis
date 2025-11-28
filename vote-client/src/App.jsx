@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { Users, Link, Check, Calendar, Trash2 } from 'lucide-react';
+import { Users, Link, Check, Calendar, Trash2, Vote } from 'lucide-react';
 import OptionCountSelector from './components/OptionCountSelector';
 import { io } from 'socket.io-client';
 
@@ -303,10 +303,10 @@ export default function VotingApp() {
   // Landing Page
   if (mode === 'landing') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen app-background from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <div className="text-center mb-8">
-            <Users className="w-16 h-16 text-indigo-600 mx-auto mb-4" />
+            <Vote className="w-16 h-16 text-primary mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-gray-800 mb-2">What/Where/When</h1>
             <p className="text-gray-600">Jacob's super easy app to help you and your friend's make a decision</p>
           </div>
@@ -319,7 +319,7 @@ export default function VotingApp() {
 
           <button
             onClick={() => setMode('create')}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+            className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
           >
             Create New Session
           </button>
@@ -331,7 +331,7 @@ export default function VotingApp() {
   // Create Session
   if (mode === 'create') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
+      <div className="min-h-screen app-background from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Voting Session</h2>
 
@@ -380,7 +380,7 @@ export default function VotingApp() {
             ))}
             <button
               onClick={() => setOptions([...options, ''])}
-              className="text-indigo-600 hover:text-indigo-700 font-semibold"
+              className="text-primary font-semibold"
             >
               + Add Another Option
             </button>
@@ -472,7 +472,7 @@ export default function VotingApp() {
             </button>
             <button
               onClick={createSession}
-              className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+              className="flex-1 bg-primary text-white py-3 rounded-lg font-semibold transition"
             >
               Create Session
             </button>
@@ -485,7 +485,7 @@ export default function VotingApp() {
   // Voting Interface
   if (mode === 'vote' && sessionData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
+      <div className="min-h-screen app-background from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{sessionData.question}</h2>
           <p className="text-gray-600 mb-6">
@@ -593,7 +593,7 @@ export default function VotingApp() {
     const names = Object.values(sessionData.votes).map(v => v.name).join(", ");;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
+      <div className="min-h-screen app-background from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{sessionData.question}</h2>
           <p className="text-gray-600 mb-6">Voted so far: {names}</p>

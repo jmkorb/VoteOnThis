@@ -28,9 +28,17 @@ function generateSessionId() {
 app.post('/api/sessions', (req, res) => {
   const { question, options, dates, voteCount } = req.body;
   
-  if (!question || !options || options.length < voteCount) {
+  if (!question) {
     console.log(req.body);
-    return res.status(400).json({ error: 'Invalid session data' });
+    return res.status(400).json({ error: 'No quesiton to vote on' });
+  }
+  if (!options) {
+    console.log(req.body);
+    return res.status(400).json({ error: 'No options to vote on' });
+  }
+  else if(options.length < voteCount) {
+    console.log(req.body);
+    return res.status(400).json({ error: 'Not enough options to vote on' });
   }
 
   const sessionId = generateSessionId();
