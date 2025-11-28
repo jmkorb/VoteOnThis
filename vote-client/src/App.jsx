@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { Users, Link, Check, Calendar, Trash2 } from 'lucide-react';
+import OptionCountSelector from './components/OptionCountSelector';
 import { io } from 'socket.io-client';
 
 const API_URL = 'http://localhost:3001';
@@ -17,6 +18,8 @@ export default function VotingApp() {
   const [hasVoted, setHasVoted] = useState(false);
   const [error, setError] = useState('');
   const [voterId, setVoterId] = useState('');
+  const [voteCount, setVoteCount] = useState(1);
+  const [voteMode, setVoteMode] = useState('exactly');
   
   // Date voting features
   const [includeDates, setIncludeDates] = useState(false);
@@ -35,13 +38,15 @@ export default function VotingApp() {
 
   // Check URL for session ID
   useEffect(() => {
+    if (!voterId) return; // Wait for voterId to be set
+    
     const params = new URLSearchParams(window.location.search);
     const sid = params.get('session');
     if (sid) {
       setSessionId(sid);
       loadSession(sid);
     }
-  }, []);
+  }, [voterId]); 
 
   // WebSocket: Listen for session updates
   useEffect(() => {
@@ -143,7 +148,9 @@ export default function VotingApp() {
         body: JSON.stringify({
           question: question.trim(),
           options: validOptions,
-          dates: includeDates ? selectedDates.sort() : null
+          dates: includeDates ? selectedDates.sort() : null,
+          voteCount: voteCount,
+          voteMode: voteMode
         })
       });
 
@@ -192,8 +199,11 @@ export default function VotingApp() {
   };
 
   const submitVote = async () => {
-    if (selectedVotes.length < 2) {
-      setError('Please select at least 2 options');
+    const minVotes = voteMode === 'minimum' ? voteCount : (voteMode === 'exactly' ? voteCount : 0);
+    const maxVotes = voteMode === 'maximum' ? voteCount : (voteMode === 'exactly' ? voteCount : Infinity);
+  
+    if (selectedVotes.length < minVotes || selectedVotes.length > maxVotes) {
+      setError(`Please select ${voteMode} ${voteCount} option${voteCount !== 1 ? 's' : ''}`);
       return;
     }
     if (!voterName.trim()) {
@@ -235,10 +245,10 @@ export default function VotingApp() {
   const toggleVote = (option) => {
     if (selectedVotes.includes(option)) {
       setSelectedVotes(selectedVotes.filter(v => v !== option));
-    } else if (selectedVotes.length < 2) {
+    } else if (selectedVotes.length < voteCount) { 
       setSelectedVotes([...selectedVotes, option]);
     }
-  };
+  };  
 
   const calculateResults = () => {
     if (!sessionData) return [];
@@ -375,8 +385,15 @@ export default function VotingApp() {
               + Add Another Option
             </button>
           </div>
+          
+          <OptionCountSelector 
+            value={voteCount}
+            onChange={setVoteCount}
+            mode={voteMode}
+            onModeChange={setVoteMode}
+          />
 
-          <div className="mb-6 border-t pt-6">
+          <div className="mb-6 pt-6">
             <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -471,7 +488,9 @@ export default function VotingApp() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{sessionData.question}</h2>
-          <p className="text-gray-600 mb-6">Select exactly 3 options{sessionData.dates ? ' and at least 1 date' : ''}</p>
+          <p className="text-gray-600 mb-6">
+            Select {voteMode} {voteCount} option{voteCount !== 1 ? 's' : ''}{sessionData.dates ? ' and at least 1 date' : ''}
+          </p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -491,7 +510,9 @@ export default function VotingApp() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-gray-700 font-semibold mb-3">Choose Your Top 3</label>
+            <label className="block text-gray-700 font-semibold mb-3">
+              Choose {voteMode} Top {voteCount}
+            </label>
             <div className="space-y-3">
               {sessionData.options.map((option, idx) => (
                 <button
@@ -512,7 +533,7 @@ export default function VotingApp() {
             </div>
             <div className="bg-gray-50 p-3 rounded-lg mt-3">
               <p className="text-center text-gray-700">
-                Selected: <span className="font-bold text-indigo-600">{selectedVotes.length}</span> / 2
+                Selected: <span className="font-bold text-indigo-600">{selectedVotes.length}</span>
               </p>
             </div>
           </div>
@@ -550,14 +571,15 @@ export default function VotingApp() {
           <button
             onClick={submitVote}
             disabled={
-              selectedVotes.length !== 2 || 
-              !voterName.trim() || 
+              (voteMode === 'exactly' && selectedVotes.length !== voteCount) ||
+              !voterName.trim() ||
               (sessionData.dates && voterSelectedDates.length === 0)
             }
             className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             Submit Vote
           </button>
+          
         </div>
       </div>
     );
@@ -568,11 +590,13 @@ export default function VotingApp() {
     const results = calculateResults();
     const dateResults = sessionData.dates ? calculateDateResults() : [];
     const totalVoters = Object.keys(sessionData.votes).length;
+    const names = Object.values(sessionData.votes).map(v => v.name).join(", ");;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{sessionData.question}</h2>
+          <p className="text-gray-600 mb-6">Voted so far: {names}</p>
           <p className="text-gray-600 mb-6">{totalVoters} {totalVoters === 1 ? 'person has' : 'people have'} voted</p>
 
           {!hasVoted && (

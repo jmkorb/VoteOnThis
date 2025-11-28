@@ -26,9 +26,9 @@ function generateSessionId() {
 
 // Create session
 app.post('/api/sessions', (req, res) => {
-  const { question, options, dates } = req.body;
+  const { question, options, dates, voteCount } = req.body;
   
-  if (!question || !options || options.length < 2) {
+  if (!question || !options || options.length < voteCount) {
     console.log(req.body);
     return res.status(400).json({ error: 'Invalid session data' });
   }
@@ -40,7 +40,8 @@ app.post('/api/sessions', (req, res) => {
     options,
     dates: dates || null,
     votes: {},
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    voteCount
   };
 
   sessions.set(sessionId, session);
@@ -62,20 +63,26 @@ app.get('/api/sessions/:sessionId', (req, res) => {
 // Submit vote
 app.post('/api/sessions/:sessionId/vote', (req, res) => {
   const { sessionId } = req.params;
-  const { voterName, choices, dates, voterId } = req.body;
+  const { voterName, choices, dates, voterId, voteMode, voteCount } = req.body;
 
   const session = sessions.get(sessionId);
   if (!session) {
     return res.status(404).json({ error: 'Session not found' });
   }
 
-  if (choices.length !== 3) {
-    return res.status(400).json({ error: 'Must select exactly 3 options' });
+  if (voteMode == 'exactly' && voteCount != choices.length ) {
+    return res.status(400).json({ error: `Must select exactly ${voteCount} option(s)` });
+  }
+  else if (voteMode == 'minimum' && choices.length < voteCount) {
+    return res.status(400).json({ error: `Must select exactly ${voteCount} option(s)` });
+  }
+  else if (voteMode == 'maximum' && choices.length > voteCount) {
+    return res.status(400).json({ error: `Can only select up ${voteCount} option(s)` });
   }
 
   // Check if voter already voted
   if (session.votes[voterId]) {
-    return res.status(400).json({ error: 'Already voted' });
+    return res.status(400).json({ error: 'Looks like you already voted' });
   }
 
   // Validate dates if session requires them
