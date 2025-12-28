@@ -185,7 +185,9 @@ export default function VotingApp() {
       const data = await response.json();
       setSessionData(data);
 
-      // Check if current user has voted
+      setVoteCount(data.voteCount || 1);
+      setVoteMode(data.voteMode || 'exactly');
+
       if (data.votes[voterId]) {
         setHasVoted(true);
         setMode('results');
@@ -482,7 +484,6 @@ export default function VotingApp() {
     );
   }
 
-  // Voting Interface
   if (mode === 'vote' && sessionData) {
     return (
       <div className="min-h-screen app-background from-blue-50 to-indigo-100 p-4 py-8">
@@ -511,7 +512,7 @@ export default function VotingApp() {
 
           <div className="mb-6">
             <label className="block text-gray-700 font-semibold mb-3">
-              Choose {voteMode} Top {voteCount}
+              Choose {voteMode} {voteCount}
             </label>
             <div className="space-y-3">
               {sessionData.options.map((option, idx) => (

@@ -18,7 +18,6 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Generate session ID
 function generateSessionId() {
   return Math.random().toString(36).substring(2, 9);
 }
@@ -44,7 +43,6 @@ app.post('/api/sessions', (req, res) => {
     const sessionId = generateSessionId();
     const session = sessionOps.create(sessionId, question, options, dates, voteCount);
     
-    // Add empty votes object for consistency
     session.votes = {};
     
     res.json({ sessionId, session });
