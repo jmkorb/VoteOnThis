@@ -247,10 +247,14 @@ export default function VotingApp() {
   const toggleVote = (option) => {
     if (selectedVotes.includes(option)) {
       setSelectedVotes(selectedVotes.filter(v => v !== option));
-    } else if (selectedVotes.length < voteCount) { 
-      setSelectedVotes([...selectedVotes, option]);
+    } else {
+      const maxAllowed = (voteMode === 'exactly' || voteMode === 'maximum') ? voteCount : sessionData.options.length;
+      
+      if (selectedVotes.length < maxAllowed) {
+        setSelectedVotes([...selectedVotes, option]);
+      }
     }
-  };  
+  };
 
   const calculateResults = () => {
     if (!sessionData) return [];

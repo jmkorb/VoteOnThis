@@ -28,6 +28,7 @@ function initializeDatabase() {
       options TEXT NOT NULL,
       dates TEXT,
       vote_count INTEGER NOT NULL,
+      vote_mode TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL
     )
@@ -77,13 +78,13 @@ function cleanupExpiredSessions() {
 
 // Session operations
 const sessionOps = {
-  create: (sessionId, question, options, dates, voteCount) => {
+  create: (sessionId, question, options, dates, voteCount, voteMode) => {
     const now = Date.now();
     const expiresAt = now + (30 * 24 * 60 * 60 * 1000); // 30 days from now
     
     const stmt = db.prepare(`
-      INSERT INTO sessions (id, question, options, dates, vote_count, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, question, options, dates, vote_count, vote_mode, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmt.run(
@@ -92,6 +93,7 @@ const sessionOps = {
       JSON.stringify(options),
       dates ? JSON.stringify(dates) : null,
       voteCount,
+      voteMode,
       now,
       expiresAt
     );
@@ -102,6 +104,7 @@ const sessionOps = {
       options,
       dates,
       voteCount,
+      voteMode,
       createdAt: now,
       expiresAt
     };
@@ -140,6 +143,7 @@ const sessionOps = {
       options: JSON.parse(session.options),
       dates: session.dates ? JSON.parse(session.dates) : null,
       voteCount: session.vote_count,
+      voteMode: session.vote_mode,
       createdAt: session.created_at,
       expiresAt: session.expires_at,
       votes

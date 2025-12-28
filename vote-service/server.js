@@ -24,7 +24,7 @@ function generateSessionId() {
 
 // Create session
 app.post('/api/sessions', (req, res) => {
-  const { question, options, dates, voteCount } = req.body;
+  const { question, options, dates, voteCount, voteMode } = req.body;
   
   if (!question) {
     console.log(req.body);
@@ -41,7 +41,7 @@ app.post('/api/sessions', (req, res) => {
   
   try {
     const sessionId = generateSessionId();
-    const session = sessionOps.create(sessionId, question, options, dates, voteCount);
+    const session = sessionOps.create(sessionId, question, options, dates, voteCount, voteMode);
     
     session.votes = {};
     
