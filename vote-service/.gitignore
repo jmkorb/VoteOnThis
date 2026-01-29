@@ -1,0 +1,12 @@
+# TypeScript
+dist/
+*.tsbuildinfo
+
+# Node
+node_modules/
+
+# Database
+*.db
+
+# Environment
+.env
