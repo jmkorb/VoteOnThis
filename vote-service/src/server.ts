@@ -39,7 +39,7 @@ app.post('/api/sessions', (
   req: Request<{}, CreateSessionResponse | ErrorResponse, CreateSessionRequest>,
   res: Response<CreateSessionResponse | ErrorResponse>
 ) => {
-  const { question, options, dates, voteCount, voteMode } = req.body;
+  const { question, options, dates, voteCount, voteMode, anonymousMode, creatorId } = req.body;
 
   if (!question) {
     console.log(req.body);
@@ -56,7 +56,16 @@ app.post('/api/sessions', (
 
   try {
     const sessionId: string = generateSessionId();
-    const session: Session = sessionOps.create(sessionId, question, options, dates || null, voteCount, voteMode);
+    const session: Session = sessionOps.create(
+      sessionId,
+      question,
+      options,
+      dates || null,
+      voteCount,
+      voteMode,
+      anonymousMode || false,
+      creatorId || null
+    );
 
     session.votes = {};
 
@@ -136,6 +145,36 @@ app.post('/api/sessions/:sessionId/vote', (
     }
 
     res.status(500).json({ error: 'Failed to submit vote' });
+  }
+});
+
+app.post('/api/sessions/:sessionId/reveal', (
+  req: Request<{ sessionId: string }, Session | ErrorResponse>,
+  res: Response<Session | ErrorResponse>
+) => {
+  const { sessionId } = req.params;
+
+  try {
+    const session: Session | null = sessionOps.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    sessionOps.reveal(sessionId);
+
+    const updatedSession: Session | null = sessionOps.get(sessionId);
+
+    if (!updatedSession) {
+      return res.status(500).json({ error: 'Failed to retrieve updated session' });
+    }
+
+    io.to(sessionId).emit('sessionUpdate', updatedSession);
+
+    res.json(updatedSession);
+  } catch (error: unknown) {
+    console.error('Error revealing session:', error);
+    res.status(500).json({ error: 'Failed to reveal session' });
   }
 });
 

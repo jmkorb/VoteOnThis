@@ -26,6 +26,9 @@ function initializeDatabase(): void {
       dates TEXT,
       vote_count INTEGER NOT NULL,
       vote_mode TEXT NOT NULL,
+      anonymous_mode INTEGER DEFAULT 0,
+      revealed INTEGER DEFAULT 0,
+      creator_id TEXT,
       created_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL
     )
@@ -56,6 +59,28 @@ function initializeDatabase(): void {
   `);
 
   console.log('Database initialized successfully');
+
+  // Migration: Add new columns if they don't exist
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN anonymous_mode INTEGER DEFAULT 0`);
+    console.log('Added anonymous_mode column');
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN revealed INTEGER DEFAULT 0`);
+    console.log('Added revealed column');
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN creator_id TEXT`);
+    console.log('Added creator_id column');
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 function cleanupExpiredSessions(): number {
@@ -77,14 +102,16 @@ export const sessionOps = {
     options: string[],
     dates: string[] | null,
     voteCount: number,
-    voteMode: VoteMode
+    voteMode: VoteMode,
+    anonymousMode: boolean = false,
+    creatorId: string | null = null
   ): Session => {
     const now: number = Date.now();
     const expiresAt: number = now + (30 * 24 * 60 * 60 * 1000); // 30 days from now
 
     const stmt = db.prepare(`
-      INSERT INTO sessions (id, question, options, dates, vote_count, vote_mode, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, question, options, dates, vote_count, vote_mode, anonymous_mode, revealed, creator_id, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -94,6 +121,9 @@ export const sessionOps = {
       dates ? JSON.stringify(dates) : null,
       voteCount,
       voteMode,
+      anonymousMode ? 1 : 0,
+      0,
+      creatorId,
       now,
       expiresAt
     );
@@ -105,6 +135,9 @@ export const sessionOps = {
       dates,
       voteCount,
       voteMode,
+      anonymousMode,
+      revealed: false,
+      creatorId,
       createdAt: now,
       expiresAt,
       votes: {}
@@ -143,6 +176,9 @@ export const sessionOps = {
       dates: session.dates ? (JSON.parse(session.dates) as string[]) : null,
       voteCount: session.vote_count,
       voteMode: session.vote_mode as VoteMode,
+      anonymousMode: session.anonymous_mode === 1,
+      revealed: session.revealed === 1,
+      creatorId: session.creator_id,
       createdAt: session.created_at,
       expiresAt: session.expires_at,
       votes
@@ -179,6 +215,11 @@ export const sessionOps = {
   hasVoted: (sessionId: string, voterId: string): boolean => {
     const stmt = db.prepare('SELECT 1 FROM votes WHERE session_id = ? AND voter_id = ?');
     return stmt.get(sessionId, voterId) !== undefined;
+  },
+
+  reveal: (sessionId: string): void => {
+    const stmt = db.prepare('UPDATE sessions SET revealed = 1 WHERE id = ?');
+    stmt.run(sessionId);
   }
 };
 

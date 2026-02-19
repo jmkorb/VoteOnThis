@@ -7,6 +7,9 @@ export interface Session {
   dates: string[] | null;
   voteCount: number;
   voteMode: VoteMode;
+  anonymousMode: boolean;
+  revealed: boolean;
+  creatorId: string | null;
   createdAt: number;
   expiresAt: number;
   votes: Record<string, Vote>;
@@ -26,6 +29,9 @@ export interface SessionRow {
   dates: string | null;
   vote_count: number;
   vote_mode: string;
+  anonymous_mode: number;
+  revealed: number;
+  creator_id: string | null;
   created_at: number;
   expires_at: number;
 }
@@ -46,6 +52,8 @@ export interface CreateSessionRequest {
   dates?: string[];
   voteCount: number;
   voteMode: VoteMode;
+  anonymousMode?: boolean;
+  creatorId?: string;
 }
 
 export interface SubmitVoteRequest {

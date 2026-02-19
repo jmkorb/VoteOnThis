@@ -20,7 +20,8 @@ export default function VotingApp() {
   const [voterId, setVoterId] = useState('');
   const [voteCount, setVoteCount] = useState(1);
   const [voteMode, setVoteMode] = useState('exactly');
-  
+  const [anonymousMode, setAnonymousMode] = useState(false);
+
   // Date voting features
   const [includeDates, setIncludeDates] = useState(false);
   const [selectedDates, setSelectedDates] = useState([]);
@@ -141,6 +142,15 @@ export default function VotingApp() {
       return;
     }
 
+    // Debug: Log what we're sending
+    console.log('Creating session with:', {
+      anonymousMode,
+      creatorId: voterId,
+      voterId,
+      question: question.trim(),
+      optionsCount: validOptions.length
+    });
+
     try {
       const response = await fetch(`${API_URL}/api/sessions`, {
         method: 'POST',
@@ -150,7 +160,9 @@ export default function VotingApp() {
           options: validOptions,
           dates: includeDates ? selectedDates.sort() : null,
           voteCount: voteCount,
-          voteMode: voteMode
+          voteMode: voteMode,
+          anonymousMode: anonymousMode,
+          creatorId: voterId
         })
       });
 
@@ -163,7 +175,8 @@ export default function VotingApp() {
       const data = await response.json();
       setSessionId(data.sessionId);
       setSessionData(data.session);
-      setMode('results');
+      // If anonymous mode is enabled, creator should vote first before seeing results
+      setMode(anonymousMode ? 'vote' : 'results');
 
       const url = new URL(window.location);
       url.searchParams.set('session', data.sessionId);
@@ -392,12 +405,27 @@ export default function VotingApp() {
             </button>
           </div>
           
-          <OptionCountSelector 
+          <OptionCountSelector
             value={voteCount}
             onChange={setVoteCount}
             mode={voteMode}
             onModeChange={setVoteMode}
           />
+
+          <div className="mb-6 pt-6">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={anonymousMode}
+                onChange={(e) => setAnonymousMode(e.target.checked)}
+                className="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="flex items-center gap-2 text-gray-700 font-semibold">
+                <Users className="w-5 h-5" />
+                Anonymous Mode (hide voter names and counts until revealed)
+              </span>
+            </label>
+          </div>
 
           <div className="mb-6 pt-6">
             <label className="flex items-center gap-3 cursor-pointer">
@@ -590,19 +618,60 @@ export default function VotingApp() {
     );
   }
 
+  const revealResults = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/sessions/${sessionId}/reveal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to reveal results');
+        return;
+      }
+
+      const data = await response.json();
+      setSessionData(data);
+    } catch (err) {
+      setError('Failed to reveal results');
+    }
+  };
+
   // Results
   if (mode === 'results' && sessionData) {
     const results = calculateResults();
     const dateResults = sessionData.dates ? calculateDateResults() : [];
     const totalVoters = Object.keys(sessionData.votes).length;
-    const names = Object.values(sessionData.votes).map(v => v.name).join(", ");;
+    const names = Object.values(sessionData.votes).map(v => v.name).join(", ");
+    // Add fallback defaults for backward compatibility with old sessions
+    const isCreator = sessionData.creatorId === voterId;
+    const isAnonymous = sessionData.anonymousMode ?? false;
+    const isRevealed = sessionData.revealed ?? false;
+    const showDetails = !isAnonymous || isRevealed;
+
+    // Debug logging
+    console.log('Reveal button debug:', {
+      isCreator,
+      hasVoted,
+      isAnonymous,
+      isRevealed,
+      creatorId: sessionData.creatorId,
+      voterId,
+      shouldShowReveal: isCreator && hasVoted && isAnonymous && !isRevealed
+    });
 
     return (
       <div className="min-h-screen app-background from-blue-50 to-indigo-100 p-4 py-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">{sessionData.question}</h2>
-          <p className="text-gray-600 mb-6">Voted so far: {names}</p>
-          <p className="text-gray-600 mb-6">{totalVoters} {totalVoters === 1 ? 'person has' : 'people have'} voted</p>
+          {!isAnonymous ? (
+            <>
+              <p className="text-gray-600 mb-6">Voted so far: {names}</p>
+            </>
+          ) : (
+            <p className="text-gray-600 mb-6">{totalVoters} {totalVoters === 1 ? 'person has' : 'people have'} voted</p>
+          )}
 
           {!hasVoted && (
             <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg mb-6 flex items-center justify-between">
@@ -619,6 +688,24 @@ export default function VotingApp() {
             </div>
           )}
 
+          {isCreator && hasVoted && isAnonymous && !isRevealed && (
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+              <p className="text-gray-700 mb-3">You're the creator of this session. Click below to reveal all votes to everyone.</p>
+              <button
+                onClick={revealResults}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+              >
+                Reveal Results to Everyone
+              </button>
+            </div>
+          )}
+
+          {isAnonymous && isRevealed && (
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+              <span className="text-green-700">Results have been revealed by the creator</span>
+            </div>
+          )}
+
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Option Results</h3>
             <div className="space-y-4">
@@ -626,14 +713,16 @@ export default function VotingApp() {
                 <div key={idx} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-gray-800">{result.option}</span>
-                    <span className="text-gray-600">{result.votes} votes</span>
+                    {showDetails && <span className="text-gray-600">{result.votes} votes</span>}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${result.percentage}%` }}
-                    />
-                  </div>
+                  {showDetails && (
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${result.percentage}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -650,14 +739,16 @@ export default function VotingApp() {
                   <div key={idx} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-semibold text-gray-800">{formatDate(result.date)}</span>
-                      <span className="text-gray-600">{result.votes} {result.votes === 1 ? 'person' : 'people'} available</span>
+                      {showDetails && <span className="text-gray-600">{result.votes} {result.votes === 1 ? 'person' : 'people'} available</span>}
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className="bg-green-600 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${result.percentage}%` }}
-                      />
-                    </div>
+                    {showDetails && (
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-green-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${result.percentage}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
