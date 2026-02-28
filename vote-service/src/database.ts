@@ -84,10 +84,17 @@ function initializeDatabase(): void {
   }
 
   try {
-    db.exec(`ALTER TABLE sessions ADD COLUMN revealed_count INTEGER DEFAULT 0`);
-    console.log('Added revealed_count column');
+    // Check if column exists
+    const columnCheck = db.prepare(`SELECT COUNT(*) as count FROM pragma_table_info('sessions') WHERE name='revealed_count'`).get() as { count: number };
+
+    if (columnCheck.count === 0) {
+      db.exec(`ALTER TABLE sessions ADD COLUMN revealed_count INTEGER DEFAULT 0`);
+      console.log('Added revealed_count column');
+    } else {
+      console.log('revealed_count column already exists');
+    }
   } catch (e) {
-    // Column already exists
+    console.error('Error adding revealed_count column:', e);
   }
 }
 
@@ -188,7 +195,7 @@ export const sessionOps = {
       voteMode: session.vote_mode as VoteMode,
       anonymousMode: session.anonymous_mode === 1,
       revealed: session.revealed === 1,
-      revealedCount: session.revealed_count || 0,
+      revealedCount: (session as any).revealed_count || 0,
       creatorId: session.creator_id,
       createdAt: session.created_at,
       expiresAt: session.expires_at,
