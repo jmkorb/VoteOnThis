@@ -178,6 +178,66 @@ app.post('/api/sessions/:sessionId/reveal', (
   }
 });
 
+app.post('/api/sessions/:sessionId/reveal-next', (
+  req: Request<{ sessionId: string }, Session | ErrorResponse>,
+  res: Response<Session | ErrorResponse>
+) => {
+  const { sessionId } = req.params;
+
+  try {
+    const session: Session | null = sessionOps.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    sessionOps.revealNext(sessionId);
+
+    const updatedSession: Session | null = sessionOps.get(sessionId);
+
+    if (!updatedSession) {
+      return res.status(500).json({ error: 'Failed to retrieve updated session' });
+    }
+
+    io.to(sessionId).emit('sessionUpdate', updatedSession);
+
+    res.json(updatedSession);
+  } catch (error: unknown) {
+    console.error('Error revealing next:', error);
+    res.status(500).json({ error: 'Failed to reveal next' });
+  }
+});
+
+app.post('/api/sessions/:sessionId/reveal-all', (
+  req: Request<{ sessionId: string }, Session | ErrorResponse>,
+  res: Response<Session | ErrorResponse>
+) => {
+  const { sessionId } = req.params;
+
+  try {
+    const session: Session | null = sessionOps.get(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    sessionOps.revealAll(sessionId);
+
+    const updatedSession: Session | null = sessionOps.get(sessionId);
+
+    if (!updatedSession) {
+      return res.status(500).json({ error: 'Failed to retrieve updated session' });
+    }
+
+    io.to(sessionId).emit('sessionUpdate', updatedSession);
+
+    res.json(updatedSession);
+  } catch (error: unknown) {
+    console.error('Error revealing all:', error);
+    res.status(500).json({ error: 'Failed to reveal all' });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 

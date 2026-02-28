@@ -28,6 +28,7 @@ function initializeDatabase(): void {
       vote_mode TEXT NOT NULL,
       anonymous_mode INTEGER DEFAULT 0,
       revealed INTEGER DEFAULT 0,
+      revealed_count INTEGER DEFAULT 0,
       creator_id TEXT,
       created_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL
@@ -81,6 +82,13 @@ function initializeDatabase(): void {
   } catch (e) {
     // Column already exists
   }
+
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN revealed_count INTEGER DEFAULT 0`);
+    console.log('Added revealed_count column');
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 function cleanupExpiredSessions(): number {
@@ -110,8 +118,8 @@ export const sessionOps = {
     const expiresAt: number = now + (30 * 24 * 60 * 60 * 1000); // 30 days from now
 
     const stmt = db.prepare(`
-      INSERT INTO sessions (id, question, options, dates, vote_count, vote_mode, anonymous_mode, revealed, creator_id, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, question, options, dates, vote_count, vote_mode, anonymous_mode, revealed, revealed_count, creator_id, created_at, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -122,6 +130,7 @@ export const sessionOps = {
       voteCount,
       voteMode,
       anonymousMode ? 1 : 0,
+      0,
       0,
       creatorId,
       now,
@@ -137,6 +146,7 @@ export const sessionOps = {
       voteMode,
       anonymousMode,
       revealed: false,
+      revealedCount: 0,
       creatorId,
       createdAt: now,
       expiresAt,
@@ -178,6 +188,7 @@ export const sessionOps = {
       voteMode: session.vote_mode as VoteMode,
       anonymousMode: session.anonymous_mode === 1,
       revealed: session.revealed === 1,
+      revealedCount: session.revealed_count || 0,
       creatorId: session.creator_id,
       createdAt: session.created_at,
       expiresAt: session.expires_at,
@@ -218,6 +229,16 @@ export const sessionOps = {
   },
 
   reveal: (sessionId: string): void => {
+    const stmt = db.prepare('UPDATE sessions SET revealed = 1 WHERE id = ?');
+    stmt.run(sessionId);
+  },
+
+  revealNext: (sessionId: string): void => {
+    const stmt = db.prepare('UPDATE sessions SET revealed_count = revealed_count + 1 WHERE id = ?');
+    stmt.run(sessionId);
+  },
+
+  revealAll: (sessionId: string): void => {
     const stmt = db.prepare('UPDATE sessions SET revealed = 1 WHERE id = ?');
     stmt.run(sessionId);
   }

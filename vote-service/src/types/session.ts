@@ -9,6 +9,7 @@ export interface Session {
   voteMode: VoteMode;
   anonymousMode: boolean;
   revealed: boolean;
+  revealedCount: number;
   creatorId: string | null;
   createdAt: number;
   expiresAt: number;
@@ -31,6 +32,7 @@ export interface SessionRow {
   vote_mode: string;
   anonymous_mode: number;
   revealed: number;
+  revealed_count: number;
   creator_id: string | null;
   created_at: number;
   expires_at: number;

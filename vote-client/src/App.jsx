@@ -638,9 +638,49 @@ export default function VotingApp() {
     }
   };
 
+  const revealNext = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/sessions/${sessionId}/reveal-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to reveal next');
+        return;
+      }
+
+      const data = await response.json();
+      setSessionData(data);
+    } catch (err) {
+      setError('Failed to reveal next');
+    }
+  };
+
+  const revealAll = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/sessions/${sessionId}/reveal-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to reveal all');
+        return;
+      }
+
+      const data = await response.json();
+      setSessionData(data);
+    } catch (err) {
+      setError('Failed to reveal all');
+    }
+  };
+
   // Results
   if (mode === 'results' && sessionData) {
-    const results = calculateResults();
+    const allResults = calculateResults();
     const dateResults = sessionData.dates ? calculateDateResults() : [];
     const totalVoters = Object.keys(sessionData.votes).length;
     const names = Object.values(sessionData.votes).map(v => v.name).join(", ");
@@ -648,7 +688,14 @@ export default function VotingApp() {
     const isCreator = sessionData.creatorId === voterId;
     const isAnonymous = sessionData.anonymousMode ?? false;
     const isRevealed = sessionData.revealed ?? false;
+    const revealedCount = sessionData.revealedCount ?? 0;
     const showDetails = !isAnonymous || isRevealed;
+
+    // For progressive reveal: sort by votes ascending and only show revealed count
+    const sortedResults = [...allResults].sort((a, b) => a.votes - b.votes);
+    const results = isAnonymous && !isRevealed && revealedCount > 0
+      ? sortedResults.slice(0, revealedCount)
+      : allResults;
 
     // Debug logging
     console.log('Reveal button debug:', {
@@ -690,13 +737,21 @@ export default function VotingApp() {
 
           {isCreator && hasVoted && isAnonymous && !isRevealed && (
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
-              <p className="text-gray-700 mb-3">You're the creator of this session. Click below to reveal all votes to everyone.</p>
-              <button
-                onClick={revealResults}
-                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
-              >
-                Reveal Results to Everyone
-              </button>
+              <p className="text-gray-700 mb-3">You're the creator of this session. Reveal results to everyone:</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={revealNext}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+                >
+                  Reveal Next
+                </button>
+                <button
+                  onClick={revealAll}
+                  className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                >
+                  Reveal All
+                </button>
+              </div>
             </div>
           )}
 
@@ -709,23 +764,32 @@ export default function VotingApp() {
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Option Results</h3>
             <div className="space-y-4">
-              {results.map((result, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-gray-800">{result.option}</span>
-                    {showDetails && <span className="text-gray-600">{result.votes} votes</span>}
-                  </div>
-                  {showDetails && (
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${result.percentage}%` }}
-                      />
+              {results.map((result, idx) => {
+                // Show details if: not anonymous, fully revealed, or this option is within revealed count
+                const showResultDetails = !isAnonymous || isRevealed || (revealedCount > 0);
+                return (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-gray-800">{result.option}</span>
+                      {showResultDetails && <span className="text-gray-600">{result.votes} votes</span>}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {showResultDetails && (
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${result.percentage}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            {isAnonymous && !isRevealed && revealedCount > 0 && revealedCount < allResults.length && (
+              <p className="text-sm text-gray-600 mt-3">
+                Showing {revealedCount} of {allResults.length} options
+              </p>
+            )}
           </div>
 
           {sessionData.dates && dateResults.length > 0 && (
